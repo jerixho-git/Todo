@@ -1,4 +1,6 @@
-﻿namespace Todo_App.Domain.ValueObjects;
+﻿using System.Xml.Linq;
+
+namespace Todo_App.Domain.ValueObjects;
 
 public class Colour : ValueObject
 {
@@ -10,8 +12,12 @@ public class Colour : ValueObject
     {
     }
 
-    private Colour(string code)
+    public string Name { get; }
+    public string Code { get; private set; } = "#000000";
+
+    private Colour(string name, string code)
     {
+        Name = name;
         Code = code;
     }
 
@@ -27,23 +33,15 @@ public class Colour : ValueObject
         return colour;
     }
 
-    public static Colour White => new("#FFFFFF");
+   public static Colour White => new(nameof(White), "#FFFFFF");
+    public static Colour Red => new(nameof(Red), "#FF5733");
+    public static Colour Orange => new(nameof(Orange), "#FFC300");
+    public static Colour Yellow => new(nameof(Yellow), "#FFFF66");
+    public static Colour Green => new(nameof(Green), "#CCFF99");
+    public static Colour Blue => new(nameof(Blue), "#6666FF");
+    public static Colour Purple => new(nameof(Purple), "#9966CC");
+    public static Colour Grey => new(nameof(Grey), "#999999");
 
-    public static Colour Red => new("#FF5733");
-
-    public static Colour Orange => new("#FFC300");
-
-    public static Colour Yellow => new("#FFFF66");
-
-    public static Colour Green => new("#CCFF99 ");
-
-    public static Colour Blue => new("#6666FF");
-
-    public static Colour Purple => new("#9966CC");
-
-    public static Colour Grey => new("#999999");
-
-    public string Code { get; private set; } = "#000000";
 
     public static implicit operator string(Colour colour)
     {
@@ -74,9 +72,16 @@ public class Colour : ValueObject
             yield return Grey;
         }
     }
-
     protected override IEnumerable<object> GetEqualityComponents()
     {
         yield return Code;
     }
+
+    public static IEnumerable<Colour> GetSupportedColours()
+    {
+        return SupportedColours;
+    }
+    public static string GetNameFromCode(string code) =>
+        SupportedColours.FirstOrDefault(c => c.Code == code)?.Name ?? "Unknown";
+
 }

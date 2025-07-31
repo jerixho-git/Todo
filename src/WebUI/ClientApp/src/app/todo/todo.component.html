@@ -10,8 +10,7 @@
     <div class="col-sm-4">
       <div class="clearfix">
         <h2 class="float-start">Lists</h2>
-        <button class="btn btn-default float-end" title="New List..."
-          (click)="showNewListModal(newListModalTemplate)">
+        <button class="btn btn-default float-end" title="New List..." (click)="showNewListModal(newListModalTemplate)">
           <i class="bi bi-journal-plus"></i>
         </button>
       </div>
@@ -38,7 +37,7 @@
         </button>
       </div>
       <ul id="todo-items" class="list-group mb-2">
-        <li class="list-group-item" *ngFor="let item of selectedList.items; index as i">
+        <li class="list-group-item" *ngFor="let item of selectedList.items; index as i" [style.background]="item.colour">
           <div class="d-flex">
             <div class="todo-item-checkbox">
               <input type="checkbox" [(ngModel)]="item.done" (change)="updateItem(item)" />
@@ -102,14 +101,14 @@
   </div>
 </ng-template>
 
-<ng-template #itemDetailsModalTemplate>
+<ng-template #itemDetailsModalTemplate >
   <div class="modal-header">
     <h4 class="modal-title pull-left">Item Details</h4>
     <button type="button" class="close btn-close pull-right" aria-label="Close" (click)="itemDetailsModalRef.hide()">
       <span aria-hidden="true" class="visually-hidden">&times;</span>
     </button>
   </div>
-  <div class="modal-body">
+  <div class="modal-body" [style.background]="itemDetailsFormGroup.get('colour')?.value">
     <form [formGroup]="itemDetailsFormGroup" class="form">
       <div class="form-group">
         <label for="list">List</label>
@@ -127,6 +126,17 @@
         <label for="note">Note</label>
         <textarea id="note" class="form-control" rows="3" formControlName="note"></textarea>
       </div>
+
+      <div class="form-group">
+        <label for="colour">Colour</label>
+        <select class="form-control" formControlName="colour">
+          <option *ngFor="let colour of colours" [value]="colour.code">
+            {{ colour.name }}
+          </option>
+        </select>
+      </div>
+
+
     </form>
     <div *ngIf="debug">
       <pre>{{ itemDetailsFormGroup.value | json }}</pre>
@@ -135,7 +145,8 @@
   <div class="modal-footer">
     <div class="clearfix">
       <div class="float-start">
-        <button class="btn btn-default text-danger" (click)="deleteItem(selectedItem, true)">{{deleting ? 'Deleting ' + deleteCountDown + ' ...' : 'Delete'}}</button>
+        <button class="btn btn-default text-danger" (click)="deleteItem(selectedItem, true)">{{deleting ? 'Deleting ' +
+          deleteCountDown + ' ...' : 'Delete'}}</button>
       </div>
       <div class="float-end">
         <button class="btn btn-default" (click)="itemDetailsModalRef.hide()">Cancel</button>

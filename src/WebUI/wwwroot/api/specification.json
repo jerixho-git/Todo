@@ -6,6 +6,29 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/api/Colours": {
+      "get": {
+        "tags": [
+          "Colours"
+        ],
+        "operationId": "Colours_GetColours",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ColourDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/TodoItems": {
       "get": {
         "tags": [
@@ -390,6 +413,18 @@
   },
   "components": {
     "schemas": {
+      "ColourDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        }
+      },
       "PaginatedListOfTodoItemBriefDto": {
         "type": "object",
         "additionalProperties": false,
@@ -438,6 +473,10 @@
           },
           "done": {
             "type": "boolean"
+          },
+          "backgroundColor": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -450,6 +489,10 @@
             "format": "int32"
           },
           "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "backgroundColor": {
             "type": "string",
             "nullable": true
           }
@@ -469,6 +512,10 @@
           },
           "done": {
             "type": "boolean"
+          },
+          "backgroundColor": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -488,6 +535,10 @@
             "$ref": "#/components/schemas/PriorityLevel"
           },
           "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "colour": {
             "type": "string",
             "nullable": true
           }
@@ -589,6 +640,10 @@
             "format": "int32"
           },
           "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "colour": {
             "type": "string",
             "nullable": true
           }
