@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Todo_App.Application.Common.Exceptions;
 using Todo_App.Application.Common.Interfaces;
 using Todo_App.Domain.Entities;
@@ -14,6 +15,7 @@ public record UpdateTodoItemCommand : IRequest
 
     public bool Done { get; init; }
     public string? BackgroundColor { get; init; }
+    public List<int> TagIds { get; init; } = new();
 }
 
 public class UpdateTodoItemCommandHandler : IRequestHandler<UpdateTodoItemCommand>
@@ -38,6 +40,16 @@ public class UpdateTodoItemCommandHandler : IRequestHandler<UpdateTodoItemComman
         entity.Title = request.Title;
         entity.Done = request.Done;
         entity.BackgroundColor = Colour.From(request.BackgroundColor ?? Colour.White);
+
+        var tags = await _context.Tags
+       .Where(tag => request.TagIds.Contains(tag.Id))
+       .ToListAsync(cancellationToken);
+
+        entity.Tags.Clear();
+        foreach (var tag in tags)
+        {
+            entity.Tags.Add(tag);
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

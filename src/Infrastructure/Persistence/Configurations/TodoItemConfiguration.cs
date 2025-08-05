@@ -19,5 +19,12 @@ public class TodoItemConfiguration : IEntityTypeConfiguration<TodoItem>
         {
             colour.Property(c => c.Code).HasColumnName("BackgroundColor").HasMaxLength(10);
         });
+
+        builder
+            .HasMany(t => t.Tags)
+            .WithMany(t => t.TodoItems)
+            .UsingEntity(j =>
+                j.ToTable("TodoItemTags")
+            );
     }
 }

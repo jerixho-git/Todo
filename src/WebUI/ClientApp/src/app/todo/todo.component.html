@@ -36,8 +36,19 @@
           <i class="bi bi-three-dots-vertical"></i>
         </button>
       </div>
+
+      <!-- Search Input -->
+      <input class="form-control mb-2" type="text" [(ngModel)]="searchTerm" placeholder="Search title or note"
+        (input)="0" />
+
+      <!-- Tag Filter -->
+      <ng-select class="mb-2" [items]="availableTags" bindLabel="name" bindValue="id" [multiple]="true"
+        [(ngModel)]="selectedTagFilters" placeholder="Filter by tags">
+      </ng-select>
+
+
       <ul id="todo-items" class="list-group mb-2">
-        <li class="list-group-item" *ngFor="let item of selectedList.items; index as i" [style.background]="item.colour">
+        <li class="list-group-item" *ngFor="let item of filteredItems; index as i" [style.background]="item.colour">
           <div class="d-flex">
             <div class="todo-item-checkbox">
               <input type="checkbox" [(ngModel)]="item.done" (change)="updateItem(item)" />
@@ -101,7 +112,7 @@
   </div>
 </ng-template>
 
-<ng-template #itemDetailsModalTemplate >
+<ng-template #itemDetailsModalTemplate>
   <div class="modal-header">
     <h4 class="modal-title pull-left">Item Details</h4>
     <button type="button" class="close btn-close pull-right" aria-label="Close" (click)="itemDetailsModalRef.hide()">
@@ -136,6 +147,12 @@
         </select>
       </div>
 
+      <div class="form-group">
+        <label for="tags">Tags</label>
+        <ng-select [items]="availableTags" bindLabel="name" bindValue="id" formControlName="tags" [multiple]="true"
+          [addTag]="true" (add)="onAddTag($event)" placeholder="Select or add tags">
+        </ng-select>
+      </div>
 
     </form>
     <div *ngIf="debug">
