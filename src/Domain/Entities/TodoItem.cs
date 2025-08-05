@@ -27,5 +27,9 @@ public class TodoItem : BaseAuditableEntity
         }
     }
 
+    public Colour BackgroundColor { get; set; } = Colour.White;
+
     public TodoList List { get; set; } = null!;
+
+    public ICollection<Tag> Tags { get; set; } = new List<Tag>();
 }
