@@ -5,7 +5,9 @@ import {
   TodoListsClient, TodoItemsClient,
   TodoListDto, TodoItemDto, PriorityLevelDto,
   CreateTodoListCommand, UpdateTodoListCommand,
-  CreateTodoItemCommand, UpdateTodoItemDetailCommand
+  CreateTodoItemCommand, UpdateTodoItemDetailCommand,
+  ColoursClient,
+  ColourDto
 } from '../web-api-client';
 
 @Component({
@@ -28,17 +30,20 @@ export class TodoComponent implements OnInit {
   listOptionsModalRef: BsModalRef;
   deleteListModalRef: BsModalRef;
   itemDetailsModalRef: BsModalRef;
+  colours: ColourDto[] = [];
   itemDetailsFormGroup = this.fb.group({
     id: [null],
     listId: [null],
     priority: [''],
-    note: ['']
+    note: [''],
+    colour: ['']
   });
 
 
   constructor(
     private listsClient: TodoListsClient,
     private itemsClient: TodoItemsClient,
+    private coloursClient: ColoursClient,
     private modalService: BsModalService,
     private fb: FormBuilder
   ) { }
@@ -53,6 +58,13 @@ export class TodoComponent implements OnInit {
         }
       },
       error => console.error(error)
+    );
+
+    this.coloursClient.getColours().subscribe(
+      data => {
+        this.colours = data;
+      },
+      error => console.error('Failed to load colours:', error)
     );
   }
 
@@ -142,12 +154,12 @@ export class TodoComponent implements OnInit {
 
     this.itemDetailsModalRef = this.modalService.show(template);
     this.itemDetailsModalRef.onHidden.subscribe(() => {
-        this.stopDeleteCountDown();
+      this.stopDeleteCountDown();
     });
   }
 
   updateItemDetails(): void {
-    const item = new UpdateTodoItemDetailCommand(this.itemDetailsFormGroup.value);
+    const item = new UpdateTodoItemDetailCommand(this.itemDetailsFormGroup.value);    
     this.itemsClient.updateItemDetails(this.selectedItem.id, item).subscribe(
       () => {
         if (this.selectedItem.listId !== item.listId) {
@@ -163,6 +175,7 @@ export class TodoComponent implements OnInit {
 
         this.selectedItem.priority = item.priority;
         this.selectedItem.note = item.note;
+        this.selectedItem.colour = item.colour;
         this.itemDetailsModalRef.hide();
         this.itemDetailsFormGroup.reset();
       },

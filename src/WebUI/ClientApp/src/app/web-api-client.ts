@@ -15,6 +15,79 @@ import { HttpClient, HttpHeaders, HttpResponse, HttpResponseBase } from '@angula
 
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
 
+export interface IColoursClient {
+    getColours(): Observable<ColourDto[]>;
+}
+
+@Injectable({
+    providedIn: 'root'
+})
+export class ColoursClient implements IColoursClient {
+    private http: HttpClient;
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(@Inject(HttpClient) http: HttpClient, @Optional() @Inject(API_BASE_URL) baseUrl?: string) {
+        this.http = http;
+        this.baseUrl = baseUrl !== undefined && baseUrl !== null ? baseUrl : "";
+    }
+
+    getColours(): Observable<ColourDto[]> {
+        let url_ = this.baseUrl + "/api/Colours";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_ : any = {
+            observe: "response",
+            responseType: "blob",
+            headers: new HttpHeaders({
+                "Accept": "application/json"
+            })
+        };
+
+        return this.http.request("get", url_, options_).pipe(_observableMergeMap((response_ : any) => {
+            return this.processGetColours(response_);
+        })).pipe(_observableCatch((response_: any) => {
+            if (response_ instanceof HttpResponseBase) {
+                try {
+                    return this.processGetColours(response_ as any);
+                } catch (e) {
+                    return _observableThrow(e) as any as Observable<ColourDto[]>;
+                }
+            } else
+                return _observableThrow(response_) as any as Observable<ColourDto[]>;
+        }));
+    }
+
+    protected processGetColours(response: HttpResponseBase): Observable<ColourDto[]> {
+        const status = response.status;
+        const responseBlob =
+            response instanceof HttpResponse ? response.body :
+            (response as any).error instanceof Blob ? (response as any).error : undefined;
+
+        let _headers: any = {}; if (response.headers) { for (let key of response.headers.keys()) { _headers[key] = response.headers.get(key); }}
+        if (status === 200) {
+            return blobToText(responseBlob).pipe(_observableMergeMap((_responseText: string) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(ColourDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return _observableOf(result200);
+            }));
+        } else if (status !== 200 && status !== 204) {
+            return blobToText(responseBlob).pipe(_observableMergeMap((_responseText: string) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            }));
+        }
+        return _observableOf(null as any);
+    }
+}
+
 export interface ITodoItemsClient {
     getTodoItemsWithPagination(listId: number | undefined, pageNumber: number | undefined, pageSize: number | undefined): Observable<PaginatedListOfTodoItemBriefDto>;
     create(command: CreateTodoItemCommand): Observable<number>;
@@ -653,6 +726,46 @@ export class WeatherForecastClient implements IWeatherForecastClient {
     }
 }
 
+export class ColourDto implements IColourDto {
+    name?: string;
+    code?: string;
+
+    constructor(data?: IColourDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["name"];
+            this.code = _data["code"];
+        }
+    }
+
+    static fromJS(data: any): ColourDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ColourDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["code"] = this.code;
+        return data;
+    }
+}
+
+export interface IColourDto {
+    name?: string;
+    code?: string;
+}
+
 export class PaginatedListOfTodoItemBriefDto implements IPaginatedListOfTodoItemBriefDto {
     items?: TodoItemBriefDto[];
     pageNumber?: number;
@@ -722,6 +835,7 @@ export class TodoItemBriefDto implements ITodoItemBriefDto {
     listId?: number;
     title?: string | undefined;
     done?: boolean;
+    backgroundColor?: string | undefined;
 
     constructor(data?: ITodoItemBriefDto) {
         if (data) {
@@ -738,6 +852,7 @@ export class TodoItemBriefDto implements ITodoItemBriefDto {
             this.listId = _data["listId"];
             this.title = _data["title"];
             this.done = _data["done"];
+            this.backgroundColor = _data["backgroundColor"];
         }
     }
 
@@ -754,6 +869,7 @@ export class TodoItemBriefDto implements ITodoItemBriefDto {
         data["listId"] = this.listId;
         data["title"] = this.title;
         data["done"] = this.done;
+        data["backgroundColor"] = this.backgroundColor;
         return data;
     }
 }
@@ -763,11 +879,13 @@ export interface ITodoItemBriefDto {
     listId?: number;
     title?: string | undefined;
     done?: boolean;
+    backgroundColor?: string | undefined;
 }
 
 export class CreateTodoItemCommand implements ICreateTodoItemCommand {
     listId?: number;
     title?: string | undefined;
+    backgroundColor?: string | undefined;
 
     constructor(data?: ICreateTodoItemCommand) {
         if (data) {
@@ -782,6 +900,7 @@ export class CreateTodoItemCommand implements ICreateTodoItemCommand {
         if (_data) {
             this.listId = _data["listId"];
             this.title = _data["title"];
+            this.backgroundColor = _data["backgroundColor"];
         }
     }
 
@@ -796,6 +915,7 @@ export class CreateTodoItemCommand implements ICreateTodoItemCommand {
         data = typeof data === 'object' ? data : {};
         data["listId"] = this.listId;
         data["title"] = this.title;
+        data["backgroundColor"] = this.backgroundColor;
         return data;
     }
 }
@@ -803,12 +923,14 @@ export class CreateTodoItemCommand implements ICreateTodoItemCommand {
 export interface ICreateTodoItemCommand {
     listId?: number;
     title?: string | undefined;
+    backgroundColor?: string | undefined;
 }
 
 export class UpdateTodoItemCommand implements IUpdateTodoItemCommand {
     id?: number;
     title?: string | undefined;
     done?: boolean;
+    backgroundColor?: string | undefined;
 
     constructor(data?: IUpdateTodoItemCommand) {
         if (data) {
@@ -824,6 +946,7 @@ export class UpdateTodoItemCommand implements IUpdateTodoItemCommand {
             this.id = _data["id"];
             this.title = _data["title"];
             this.done = _data["done"];
+            this.backgroundColor = _data["backgroundColor"];
         }
     }
 
@@ -839,6 +962,7 @@ export class UpdateTodoItemCommand implements IUpdateTodoItemCommand {
         data["id"] = this.id;
         data["title"] = this.title;
         data["done"] = this.done;
+        data["backgroundColor"] = this.backgroundColor;
         return data;
     }
 }
@@ -847,6 +971,7 @@ export interface IUpdateTodoItemCommand {
     id?: number;
     title?: string | undefined;
     done?: boolean;
+    backgroundColor?: string | undefined;
 }
 
 export class UpdateTodoItemDetailCommand implements IUpdateTodoItemDetailCommand {
@@ -854,6 +979,7 @@ export class UpdateTodoItemDetailCommand implements IUpdateTodoItemDetailCommand
     listId?: number;
     priority?: PriorityLevel;
     note?: string | undefined;
+    colour?: string | undefined;
 
     constructor(data?: IUpdateTodoItemDetailCommand) {
         if (data) {
@@ -870,6 +996,7 @@ export class UpdateTodoItemDetailCommand implements IUpdateTodoItemDetailCommand
             this.listId = _data["listId"];
             this.priority = _data["priority"];
             this.note = _data["note"];
+            this.colour = _data["colour"];
         }
     }
 
@@ -886,6 +1013,7 @@ export class UpdateTodoItemDetailCommand implements IUpdateTodoItemDetailCommand
         data["listId"] = this.listId;
         data["priority"] = this.priority;
         data["note"] = this.note;
+        data["colour"] = this.colour;
         return data;
     }
 }
@@ -895,6 +1023,7 @@ export interface IUpdateTodoItemDetailCommand {
     listId?: number;
     priority?: PriorityLevel;
     note?: string | undefined;
+    colour?: string | undefined;
 }
 
 export enum PriorityLevel {
@@ -1063,6 +1192,7 @@ export class TodoItemDto implements ITodoItemDto {
     done?: boolean;
     priority?: number;
     note?: string | undefined;
+    colour?: string | undefined;
 
     constructor(data?: ITodoItemDto) {
         if (data) {
@@ -1081,6 +1211,7 @@ export class TodoItemDto implements ITodoItemDto {
             this.done = _data["done"];
             this.priority = _data["priority"];
             this.note = _data["note"];
+            this.colour = _data["colour"];
         }
     }
 
@@ -1099,6 +1230,7 @@ export class TodoItemDto implements ITodoItemDto {
         data["done"] = this.done;
         data["priority"] = this.priority;
         data["note"] = this.note;
+        data["colour"] = this.colour;
         return data;
     }
 }
@@ -1110,6 +1242,7 @@ export interface ITodoItemDto {
     done?: boolean;
     priority?: number;
     note?: string | undefined;
+    colour?: string | undefined;
 }
 
 export class CreateTodoListCommand implements ICreateTodoListCommand {
