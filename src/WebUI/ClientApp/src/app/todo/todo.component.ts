@@ -5,7 +5,12 @@ import {
   TodoListsClient, TodoItemsClient,
   TodoListDto, TodoItemDto, PriorityLevelDto,
   CreateTodoListCommand, UpdateTodoListCommand,
-  CreateTodoItemCommand, UpdateTodoItemDetailCommand
+  CreateTodoItemCommand, UpdateTodoItemDetailCommand,
+  ColoursClient,
+  ColourDto,
+  TagDto,
+  TagsClient,
+  CreateTagCommand
 } from '../web-api-client';
 
 @Component({
@@ -28,17 +33,23 @@ export class TodoComponent implements OnInit {
   listOptionsModalRef: BsModalRef;
   deleteListModalRef: BsModalRef;
   itemDetailsModalRef: BsModalRef;
+  colours: ColourDto[] = [];
+  availableTags: TagDto[] = [];
   itemDetailsFormGroup = this.fb.group({
     id: [null],
     listId: [null],
     priority: [''],
-    note: ['']
+    note: [''],
+    colour: [''],
+    tags: []
   });
 
 
   constructor(
     private listsClient: TodoListsClient,
     private itemsClient: TodoItemsClient,
+    private coloursClient: ColoursClient,
+    private tagsClient: TagsClient,
     private modalService: BsModalService,
     private fb: FormBuilder
   ) { }
@@ -54,6 +65,18 @@ export class TodoComponent implements OnInit {
       },
       error => console.error(error)
     );
+
+    this.coloursClient.getColours().subscribe(
+      data => {
+        this.colours = data;
+      },
+      error => console.error('Failed to load colours:', error)
+    );
+
+
+    this.tagsClient.get().subscribe(tags => {
+      this.availableTags = tags;
+    });
   }
 
   // Lists
@@ -138,16 +161,34 @@ export class TodoComponent implements OnInit {
   // Items
   showItemDetailsModal(template: TemplateRef<any>, item: TodoItemDto): void {
     this.selectedItem = item;
-    this.itemDetailsFormGroup.patchValue(this.selectedItem);
+    this.itemDetailsFormGroup.patchValue({
+      id: item.id,
+      listId: item.listId,
+      priority: item.priority,
+      note: item.note,
+      colour: item.colour,
+      tags: item.tags?.map(tag => tag.id) || []
+    });
 
     this.itemDetailsModalRef = this.modalService.show(template);
     this.itemDetailsModalRef.onHidden.subscribe(() => {
-        this.stopDeleteCountDown();
+      this.stopDeleteCountDown();
     });
   }
 
   updateItemDetails(): void {
-    const item = new UpdateTodoItemDetailCommand(this.itemDetailsFormGroup.value);
+    const rawValue = this.itemDetailsFormGroup.value;
+    const item = new UpdateTodoItemDetailCommand({
+      id: rawValue.id,
+      listId: rawValue.listId,
+      priority: rawValue.priority,
+      note: rawValue.note,
+      colour: rawValue.colour,
+      tagIds: (rawValue.tags || [])
+        .filter((tag: any) => tag !== null && tag !== undefined)
+        .map((tag: any) => typeof tag === 'number' ? tag : tag.id)
+    });
+
     this.itemsClient.updateItemDetails(this.selectedItem.id, item).subscribe(
       () => {
         if (this.selectedItem.listId !== item.listId) {
@@ -163,6 +204,11 @@ export class TodoComponent implements OnInit {
 
         this.selectedItem.priority = item.priority;
         this.selectedItem.note = item.note;
+        this.selectedItem.colour = item.colour;
+        const tagIds = item.tagIds || [];
+        this.selectedItem.tags = this.availableTags.filter(t =>
+          tagIds.includes(t.id)
+        );
         this.itemDetailsModalRef.hide();
         this.itemDetailsFormGroup.reset();
       },
@@ -192,26 +238,38 @@ export class TodoComponent implements OnInit {
   updateItem(item: TodoItemDto, pressedEnter: boolean = false): void {
     const isNewItem = item.id === 0;
 
-    if (!item.title.trim()) {
+    if (!item.title?.trim()) {
       this.deleteItem(item);
       return;
     }
 
-    if (item.id === 0) {
-      this.itemsClient
-        .create({
-          ...item, listId: this.selectedList.id
-        } as CreateTodoItemCommand)
-        .subscribe(
-          result => {
-            item.id = result;
-          },
-          error => console.error(error)
-        );
+    if (isNewItem) {
+      const createCommand = new CreateTodoItemCommand({
+        listId: this.selectedList.id,
+        title: item.title,
+        colour: item.colour,
+        tagIds: item.tags?.map(t => t.id) ?? []
+      });
+
+      this.itemsClient.create(createCommand).subscribe(
+        result => {
+          item.id = result;
+        },
+        error => console.error('Create failed:', error)
+      );
     } else {
-      this.itemsClient.update(item.id, item).subscribe(
+      const updateCommand = new UpdateTodoItemDetailCommand({
+        id: item.id,
+        listId: item.listId,
+        note: item.note,
+        colour: item.colour,
+        priority: item.priority,
+        tagIds: item.tags?.map(t => t.id) ?? []
+      });
+
+      this.itemsClient.updateItemDetails(item.id, updateCommand).subscribe(
         () => console.log('Update succeeded.'),
-        error => console.error(error)
+        error => console.error('Update failed:', error)
       );
     }
 
@@ -261,4 +319,43 @@ export class TodoComponent implements OnInit {
     this.deleteCountDown = 0;
     this.deleting = false;
   }
+
+  onAddTag(event: any): void {
+    const name = typeof event === 'string' ? event : event?.name;
+
+    if (!name?.trim()) return;
+
+    const command = new CreateTagCommand();
+    command.name = name;
+
+    this.tagsClient.create(command).subscribe(newTag => {
+      this.availableTags.push(newTag);
+
+      const currentTags = this.itemDetailsFormGroup.get('tags')?.value || [];
+      this.itemDetailsFormGroup.patchValue({
+        tags: [...currentTags, newTag.id]
+      });
+    });
+  }
+
+
+  selectedTagFilters: number[] = [];
+  searchTerm = '';
+  get filteredItems(): TodoItemDto[] {
+    if (!this.selectedList) return [];
+
+    return this.selectedList.items.filter(item => {
+      const matchesTags =
+        this.selectedTagFilters.length === 0 ||
+        item.tags?.some(tag => this.selectedTagFilters.includes(tag.id));
+
+      const matchesText =
+        !this.searchTerm ||
+        item.title?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        item.note?.toLowerCase().includes(this.searchTerm.toLowerCase());
+
+      return matchesTags && matchesText;
+    });
+  }
+
 }

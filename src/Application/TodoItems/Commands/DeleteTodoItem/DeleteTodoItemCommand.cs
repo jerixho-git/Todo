@@ -27,7 +27,7 @@ public class DeleteTodoItemCommandHandler : IRequestHandler<DeleteTodoItemComman
             throw new NotFoundException(nameof(TodoItem), request.Id);
         }
 
-        _context.TodoItems.Remove(entity);
+        entity.IsDeleted = true;
 
         entity.AddDomainEvent(new TodoItemDeletedEvent(entity));
 
@@ -35,4 +35,5 @@ public class DeleteTodoItemCommandHandler : IRequestHandler<DeleteTodoItemComman
 
         return Unit.Value;
     }
+
 }

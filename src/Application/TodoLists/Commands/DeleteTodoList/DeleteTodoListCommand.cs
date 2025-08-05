@@ -20,15 +20,22 @@ public class DeleteTodoListCommandHandler : IRequestHandler<DeleteTodoListComman
     public async Task<Unit> Handle(DeleteTodoListCommand request, CancellationToken cancellationToken)
     {
         var entity = await _context.TodoLists
-            .Where(l => l.Id == request.Id)
-            .SingleOrDefaultAsync(cancellationToken);
+       .Include(l => l.Items)
+       .FirstOrDefaultAsync(l => l.Id == request.Id, cancellationToken);
 
         if (entity == null)
         {
             throw new NotFoundException(nameof(TodoList), request.Id);
         }
 
-        _context.TodoLists.Remove(entity);
+        // Soft delete the list
+        entity.IsDeleted = true;
+
+        // Soft delete all child items
+        foreach (var item in entity.Items)
+        {
+            item.IsDeleted = true;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 
